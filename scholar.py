@@ -183,6 +183,7 @@ except ImportError:
 # Import BeautifulSoup -- try 4 first, fall back to older
 try:
     from bs4 import BeautifulSoup
+    from bs4 import NavigableString, Tag
 except ImportError:
     try:
         from BeautifulSoup import BeautifulSoup
@@ -512,7 +513,7 @@ class ScholarArticleParser(object):
 
     def _path2url(self, path):
         """Helper, returns full URL in case path isn't one."""
-        if path.startswith('http://'):
+        if path.startswith('http://') or path.startswith('https://'):
             return path
         if not path.startswith('/'):
             path = '/' + path
@@ -556,10 +557,9 @@ class ScholarArticleParser120201(ScholarArticleParser):
                 self._parse_links(tag)
 
 
-class ScholarArticleParser120726(ScholarArticleParser):
+class ScholarArticleParser190528(ScholarArticleParser):
     """
-    This class reflects update to the Scholar results page layout that
-    Google made 07/26/12.
+    Customized update on 19/05/28
     """
     def _parse_article(self, div):
         self.article = ScholarArticle()
@@ -568,8 +568,11 @@ class ScholarArticleParser120726(ScholarArticleParser):
             if not hasattr(tag, 'name'):
                 continue
             if str(tag).lower().find('.pdf'):
-                if tag.find('div', {'class': 'gs_ttss'}):
-                    self._parse_links(tag.find('div', {'class': 'gs_ttss'}))
+                if isinstance(tag, NavigableString):
+                    continue
+                if isinstance(tag, Tag):
+                    if tag.find('div', {'class': 'gs_or_ggsm'}):
+                        self._parse_links(tag.find('div', {'class': 'gs_or_ggsm'}))
 
             if tag.name == 'div' and self._tag_has_class(tag, 'gs_ri'):
                 # There are (at least) two formats here. In the first
@@ -927,9 +930,9 @@ class ScholarQuerier(object):
     # Older URLs:
     # ScholarConf.SCHOLAR_SITE + '/scholar?q=%s&hl=en&btnG=Search&as_sdt=2001&as_sdtp=on
 
-    class Parser(ScholarArticleParser120726):
+    class Parser(ScholarArticleParser190528):
         def __init__(self, querier):
-            ScholarArticleParser120726.__init__(self)
+            ScholarArticleParser190528.__init__(self)
             self.querier = querier
 
         def handle_num_results(self, num_results):
@@ -1142,8 +1145,11 @@ def csv(querier, header=False, sep='|'):
 def citation_export(querier):
     articles = querier.articles
     for art in articles:
-        print(art.as_citation() + '\n')
+        print(art.as_citation() + b'\n')
 
+def citation_export_str(querier):
+    articles = querier.articles
+    return '\n'.join([str(art.as_citation()) for art in articles])
 
 def main():
     usage = """scholar.py [options] <query string>
