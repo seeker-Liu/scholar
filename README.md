@@ -1,12 +1,11 @@
-scholar.py
-==========
 Forked by peterzjx
+==================
 
 The new citation button (chunky quotation icon) requires interaction with javascript. A formal solution requires interactive parsing. It can be partially circumvented by change (Google scholar) Settings - Bibliography manager - Show links to import citations into - BibTex. After that the returned search should have an additional link of "Import into". Use a cookie-file to force the program to inherit this setting from the browser.
 
 Merged solution on https://github.com/ckreibich/scholar.py/issues/116
 
-
+scholar.py
 ==========
 scholar.py is a Python module that implements a querier and parser for Google Scholar's output. Its classes can be used independently, but it can also be invoked as a command-line tool.
 
