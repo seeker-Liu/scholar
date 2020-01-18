@@ -624,6 +624,11 @@ class ScholarArticleParser190528(ScholarArticleParser):
                         raw_text = raw_text.replace('\n', '')
                         self.article['excerpt'] = raw_text
 
+            if self.article['url_pdf'] is None and tag.name == 'div' and self._tag_has_class(tag, 'gs_ggs') \
+                    and tag.div and tag.div.div and tag.div.div.a and tag.div.div.a.span \
+                    and tag.div.div.a.span.get_text() == "[PDF]":
+                self.article['url_pdf'] = self._path2url(tag.div.div.a['href'])
+
 
 class ScholarQuery(object):
     """
