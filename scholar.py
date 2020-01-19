@@ -166,17 +166,18 @@ import os
 import re
 import sys
 import warnings
+import ssl
 
 try:
     # Try importing for Python 3
     # pylint: disable-msg=F0401
     # pylint: disable-msg=E0611
-    from urllib.request import HTTPCookieProcessor, Request, build_opener
+    from urllib.request import HTTPCookieProcessor, Request, build_opener, HTTPSHandler
     from urllib.parse import quote, unquote
     from http.cookiejar import MozillaCookieJar
 except ImportError:
     # Fallback for Python 2
-    from urllib2 import Request, build_opener, HTTPCookieProcessor
+    from urllib2 import Request, build_opener, HTTPCookieProcessor, HTTPSHandler
     from urllib import quote, unquote
     from cookielib import MozillaCookieJar
 
@@ -970,7 +971,13 @@ class ScholarQuerier(object):
                 ScholarUtils.log('warn', 'could not load cookies file: %s' % msg)
                 self.cjar = MozillaCookieJar() # Just to be safe
 
-        self.opener = build_opener(HTTPCookieProcessor(self.cjar))
+        # Fix from: https://stackoverflow.com/questions/19268548/python-ignore-certificate-validation-urllib2
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+
+        self.opener = build_opener(
+            HTTPSHandler(context=ctx), HTTPCookieProcessor(self.cjar))
         self.settings = None # Last settings object, if any
 
     def apply_settings(self, settings):
