@@ -470,10 +470,11 @@ class ScholarArticleParser(object):
                 # We can also extract the cluster ID from the versions
                 # URL. Note that we know that the string contains "?",
                 # from the above if-statement.
-                args = self.article['url_citations'].split('?', 1)[1]
-                for arg in args.split('&'):
-                    if arg.startswith('cites='):
-                        self.article['cluster_id'] = arg[6:]
+                if self.article['cluster_id'] is None:
+                    args = self.article['url_citations'].split('?', 1)[1]
+                    for arg in args.split('&'):
+                        if arg.startswith('cites='):
+                            self.article['cluster_id'] = arg[6:]
 
             if tag.get('href').startswith('/scholar?cluster'):
                 if hasattr(tag, 'string') and tag.string.startswith('All '):
@@ -481,6 +482,12 @@ class ScholarArticleParser(object):
                         self._as_int(tag.string.split()[1])
                 self.article['url_versions'] = \
                     self._strip_url_arg('num', self._path2url(tag.get('href')))
+                    
+                if self.article['cluster_id'] is None:
+                    args = self.article['url_versions'].split('?', 1)[1]
+                    for arg in args.split('&'):
+                        if arg.startswith('cluster='):
+                            self.article['cluster_id'] = arg[8:]
 
             if tag.getText().startswith('Import'):
                 self.article['url_citation'] = self._path2url(tag.get('href'))
