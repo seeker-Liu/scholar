@@ -1167,6 +1167,84 @@ def citation_export_str(querier):
     return '\n'.join([str(art.as_citation()) for art in articles])
 
 
+def work(options):
+    if options.cookie_file:
+        ScholarConf.COOKIE_JAR_FILE = options.cookie_file
+
+    # Sanity-check the options: if they include a cluster ID query, it
+    # makes no sense to have search arguments:
+    if options.cluster_id is not None:
+        if options.author or options.allw or options.some or options.none \
+                or options.phrase or options.title_only or options.pub \
+                or options.after or options.before:
+            print('Cluster ID queries do not allow additional search arguments.')
+            return 0
+
+    querier = ScholarQuerier()
+    settings = ScholarSettings()
+
+    if options.citation == 'bt':
+        settings.set_citation_format(ScholarSettings.CITFORM_BIBTEX)
+    elif options.citation == 'en':
+        settings.set_citation_format(ScholarSettings.CITFORM_ENDNOTE)
+    elif options.citation == 'rm':
+        settings.set_citation_format(ScholarSettings.CITFORM_REFMAN)
+    elif options.citation == 'rw':
+        settings.set_citation_format(ScholarSettings.CITFORM_REFWORKS)
+    elif options.citation is not None:
+        print('Invalid citation link format, must be one of "bt", "en", "rm", or "rw".')
+        return 0
+
+    querier.apply_settings(settings)
+
+    if options.cluster_id:
+        query = ClusterScholarQuery(cluster=options.cluster_id)
+    elif options.url:
+        query = BareUrlScholarQuery(url=options.url)
+    else:
+        query = SearchScholarQuery()
+        if options.author:
+            query.set_author(options.author)
+        if options.allw:
+            query.set_words(options.allw)
+        if options.some:
+            query.set_words_some(options.some)
+        if options.none:
+            query.set_words_none(options.none)
+        if options.phrase:
+            query.set_phrase(options.phrase)
+        if options.title_only:
+            query.set_scope(True)
+        if options.pub:
+            query.set_pub(options.pub)
+        if options.after or options.before:
+            query.set_timeframe(options.after, options.before)
+        if options.no_patents:
+            query.set_include_patents(False)
+        if options.no_citations:
+            query.set_include_citations(False)
+
+    if options.count is not None:
+        options.count = min(options.count, ScholarConf.MAX_PAGE_RESULTS)
+        query.set_num_page_results(options.count)
+
+    querier.send_query(query)
+
+    if options.csv:
+        csv(querier)
+    elif options.csv_header:
+        csv(querier, header=True)
+    elif options.citation is not None:
+        citation_export(querier)
+    else:
+        txt(querier, with_globals=options.txt_globals)
+
+    if options.cookie_file:
+        querier.save_cookies()
+
+    return -1
+
+
 def main():
     usage = """scholar.py [options] <query string>
 A command-line interface to Google Scholar.
@@ -1258,81 +1336,7 @@ scholar.py -c 5 -a "albert einstein" -t --none "quantum theory" --after 1970"""
         print('This is scholar.py %s.' % ScholarConf.VERSION)
         return 0
 
-    if options.cookie_file:
-        ScholarConf.COOKIE_JAR_FILE = options.cookie_file
-
-    # Sanity-check the options: if they include a cluster ID query, it
-    # makes no sense to have search arguments:
-    if options.cluster_id is not None:
-        if options.author or options.allw or options.some or options.none \
-                or options.phrase or options.title_only or options.pub \
-                or options.after or options.before:
-            print('Cluster ID queries do not allow additional search arguments.')
-            return 1
-
-    querier = ScholarQuerier()
-    settings = ScholarSettings()
-
-    if options.citation == 'bt':
-        settings.set_citation_format(ScholarSettings.CITFORM_BIBTEX)
-    elif options.citation == 'en':
-        settings.set_citation_format(ScholarSettings.CITFORM_ENDNOTE)
-    elif options.citation == 'rm':
-        settings.set_citation_format(ScholarSettings.CITFORM_REFMAN)
-    elif options.citation == 'rw':
-        settings.set_citation_format(ScholarSettings.CITFORM_REFWORKS)
-    elif options.citation is not None:
-        print('Invalid citation link format, must be one of "bt", "en", "rm", or "rw".')
-        return 1
-
-    querier.apply_settings(settings)
-
-    if options.cluster_id:
-        query = ClusterScholarQuery(cluster=options.cluster_id)
-    elif options.url:
-        query = BareUrlScholarQuery(url=options.url)
-    else:
-        query = SearchScholarQuery()
-        if options.author:
-            query.set_author(options.author)
-        if options.allw:
-            query.set_words(options.allw)
-        if options.some:
-            query.set_words_some(options.some)
-        if options.none:
-            query.set_words_none(options.none)
-        if options.phrase:
-            query.set_phrase(options.phrase)
-        if options.title_only:
-            query.set_scope(True)
-        if options.pub:
-            query.set_pub(options.pub)
-        if options.after or options.before:
-            query.set_timeframe(options.after, options.before)
-        if options.no_patents:
-            query.set_include_patents(False)
-        if options.no_citations:
-            query.set_include_citations(False)
-
-    if options.count is not None:
-        options.count = min(options.count, ScholarConf.MAX_PAGE_RESULTS)
-        query.set_num_page_results(options.count)
-
-    querier.send_query(query)
-
-    if options.csv:
-        csv(querier)
-    elif options.csv_header:
-        csv(querier, header=True)
-    elif options.citation is not None:
-        citation_export(querier)
-    else:
-        txt(querier, with_globals=options.txt_globals)
-
-    if options.cookie_file:
-        querier.save_cookies()
-
-    return 0
+    return work(options)
 
 
 if __name__ == "__main__":
