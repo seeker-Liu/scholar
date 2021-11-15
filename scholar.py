@@ -542,33 +542,6 @@ class ScholarArticleParser(object):
         return parts[0] + '?' + '&'.join(res)
 
 
-class ScholarArticleParser120201(ScholarArticleParser):
-    """
-    This class reflects update to the Scholar results page layout that
-    Google recently.
-    """
-
-    def _parse_article(self, div):
-        self.article = ScholarArticle()
-
-        for tag in div:
-            if not hasattr(tag, 'name'):
-                continue
-
-            if tag.name == 'h3' and self._tag_has_class(tag, 'gs_rt') and tag.a:
-                self.article['title'] = ''.join(tag.a.findAll(text=True))
-                self.article['url'] = self._path2url(tag.a['href'])
-                if self.article['url'].endswith('.pdf'):
-                    self.article['url_pdf'] = self.article['url']
-
-            if tag.name == 'div' and self._tag_has_class(tag, 'gs_a'):
-                year = self.year_re.findall(tag.text)
-                self.article['year'] = year[0] if len(year) > 0 else None
-
-            if tag.name == 'div' and self._tag_has_class(tag, 'gs_fl'):
-                self._parse_links(tag)
-
-
 class ScholarArticleParser190528(ScholarArticleParser):
     """
     Customized update on 19/05/28
@@ -721,6 +694,20 @@ class ScholarQuery(object):
                 phrase = '"' + phrase + '"'
             phrases.append(phrase)
         return ' '.join(phrases)
+
+
+class BareUrlScholarQuery(ScholarQuery):
+    url = None
+
+    def __init__(self, url=None):
+        ScholarQuery.__init__(self)
+        self.set_url(url)
+
+    def set_url(self, url):
+        self.url = url
+
+    def get_url(self):
+        return self.url
 
 
 class ClusterScholarQuery(ScholarQuery):
@@ -1224,6 +1211,10 @@ scholar.py -c 5 -a "albert einstein" -t --none "quantum theory" --after 1970"""
                      help='Do not include citations in results')
     group.add_option('-C', '--cluster-id', metavar='CLUSTER_ID', default=None,
                      help='Do not search, just use articles in given cluster ID')
+    group.add_option('--cites', metavar='CLUSTER_ID', default=None, type='int',
+                     help='Search for the literatures cited article with given cluster ID, can also pass other '
+                          'parameters as filters')
+    group.add_option('--url', default=None, metavar='URL', help='Directly access the pre-constructed url')
     group.add_option('-c', '--count', type='int', default=None,
                      help='Maximum number of results')
     parser.add_option_group(group)
@@ -1298,6 +1289,8 @@ scholar.py -c 5 -a "albert einstein" -t --none "quantum theory" --after 1970"""
 
     if options.cluster_id:
         query = ClusterScholarQuery(cluster=options.cluster_id)
+    elif options.url:
+        query = BareUrlScholarQuery(url=options.url)
     else:
         query = SearchScholarQuery()
         if options.author:
