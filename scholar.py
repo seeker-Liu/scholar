@@ -629,6 +629,9 @@ class ScholarQuery(object):
         # in attrs, see below).
         self.num_results = None
 
+        # Which page of search result should be reported, ranged between (1, 100)
+        self.page_num = None
+
         # Queries may have global result attributes, similar to
         # per-article attributes in ScholarArticle. The exact set of
         # attributes may differ by query type, but they all share the
@@ -639,6 +642,14 @@ class ScholarQuery(object):
         self.num_results = ScholarUtils.ensure_int(
             num_page_results,
             'maximum number of results on page must be numeric')
+
+    def set_page_num(self, page_num):
+        # TODO: Handle the page num parameter in the "general" query
+        self.page_num = ScholarUtils.ensure_int(
+            page_num,
+            'The page number required must be numeric')
+        if page_num < 1 or page_num > 100:
+            raise QueryArgumentError("Page number out of range (1-100).")
 
     def get_url(self):
         """
@@ -697,10 +708,10 @@ class ScholarQuery(object):
 
 
 class BareUrlScholarQuery(ScholarQuery):
-    url = None
 
     def __init__(self, url=None):
         ScholarQuery.__init__(self)
+        self.url = None
         self.set_url(url)
 
     def set_url(self, url):
@@ -710,6 +721,38 @@ class BareUrlScholarQuery(ScholarQuery):
         return self.url
 
 
+class CitesScholarQuery(ScholarQuery):
+    """
+    Query that search the literatures which cited the given literature (by the literature ID)
+    # TODO: This query, unlike ClusterScholarQuery, can also have other parameters to further filter in all
+        "cited by" results. It is not supported now.
+    """
+    SCHOLAR_CITES_URL = ScholarConf.SCHOLAR_SITE + '/scholar?' + \
+                        'cites=%(cluster_id)s' + '%(num)s' + '%(page)s'
+
+    def __init__(self, cluster_id=None):
+        ScholarQuery.__init__(self)
+        self.cluster_id = None
+        self.set_cluster(cluster_id)
+
+    def set_cluster(self, cluster_id):
+        msg = 'cluster ID must be numeric'
+        self.cluster_id = ScholarUtils.ensure_int(cluster_id, msg)
+
+    def get_url(self):
+        if self.cluster_id is None:
+            raise QueryArgumentError('cluster query needs cluster ID')
+
+        urlargs = {'cluster_id': self.cluster_id,
+                   'num': ('&num=%d' % self.num_results if self.num_results is not None else ''),
+                   'page': ('&start=%d' % (self.page_num - 1) * 10 if self.page_num is not None else '')}
+
+        # The following URL arguments must not be quoted, or the
+        # server will not recognize them:
+
+        return self.SCHOLAR_CITES_URL % urlargs
+
+
 class ClusterScholarQuery(ScholarQuery):
     """
     This version just pulls up an article cluster whose ID we already
@@ -717,7 +760,7 @@ class ClusterScholarQuery(ScholarQuery):
     """
     SCHOLAR_CLUSTER_URL = ScholarConf.SCHOLAR_SITE + '/scholar?' \
                           + 'cluster=%(cluster)s' \
-                          + '%(num)s'
+                          + '%(num)s' + '%(page)s'
 
     def __init__(self, cluster=None):
         ScholarQuery.__init__(self)
@@ -745,6 +788,7 @@ class ClusterScholarQuery(ScholarQuery):
         # server will not recognize them:
         urlargs['num'] = ('&num=%d' % self.num_results
                           if self.num_results is not None else '')
+        urlargs['page'] = ('&start=%d' % ((self.page_num - 1) * 10) if self.page_num is not None else '')
 
         return self.SCHOLAR_CLUSTER_URL % urlargs
 
@@ -1215,6 +1259,8 @@ scholar.py -c 5 -a "albert einstein" -t --none "quantum theory" --after 1970"""
                      help='Search for the literatures cited article with given cluster ID, can also pass other '
                           'parameters as filters')
     group.add_option('--url', default=None, metavar='URL', help='Directly access the pre-constructed url')
+    group.add_option('--page', default=None, metavar='NUMBER', type='int',
+                     help='The page being fetched (1-100), default:1')
     group.add_option('-c', '--count', type='int', default=None,
                      help='Maximum number of results')
     parser.add_option_group(group)
@@ -1291,6 +1337,8 @@ scholar.py -c 5 -a "albert einstein" -t --none "quantum theory" --after 1970"""
         query = ClusterScholarQuery(cluster=options.cluster_id)
     elif options.url:
         query = BareUrlScholarQuery(url=options.url)
+    elif options.cites:
+        query = CitesScholarQuery(cluster_id=options.cites)
     else:
         query = SearchScholarQuery()
         if options.author:
@@ -1317,6 +1365,9 @@ scholar.py -c 5 -a "albert einstein" -t --none "quantum theory" --after 1970"""
     if options.count is not None:
         options.count = min(options.count, ScholarConf.MAX_PAGE_RESULTS)
         query.set_num_page_results(options.count)
+
+    if options.page is not None:
+        query.set_page_num(options.page)
 
     querier.send_query(query)
 
