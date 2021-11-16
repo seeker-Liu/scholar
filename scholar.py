@@ -1140,7 +1140,7 @@ class ScholarQuerier(object):
             return None
 
 
-def txt(querier, with_globals):
+def txt(querier, with_globals, output_file=sys.stdout):
     if with_globals:
         # If we have any articles, check their attribute labels to get
         # the maximum length -- makes for nicer alignment.
@@ -1157,27 +1157,27 @@ def txt(querier, with_globals):
         fmt = '[G] %%%ds %%s' % max(0, max_label_len - 4)
         for item in items:
             if item[0] is not None:
-                print(fmt % (item[1], item[0]))
+                print(fmt % (item[1], item[0]), file=output_file)
         if len(items) > 0:
-            print
+            print  # ??
 
     articles = querier.articles
     for art in articles:
-        print(encode(art.as_txt()) + '\n')
+        print(encode(art.as_txt()) + '\n', file=output_file)
 
 
-def csv(querier, header=False, sep='|'):
+def csv(querier, header=False, sep='|', output_file=sys.stdout):
     articles = querier.articles
     for art in articles:
         result = art.as_csv(header=header, sep=sep)
-        print(encode(result))
+        print(encode(result), file=output_file)
         header = False
 
 
-def citation_export(querier):
+def citation_export(querier, output_file=sys.stdout):
     articles = querier.articles
     for art in articles:
-        print(art.as_citation() + b'\n')
+        print(art.as_citation() + b'\n', file=output_file)
 
 
 def citation_export_str(querier):
@@ -1185,21 +1185,21 @@ def citation_export_str(querier):
     return '\n'.join([str(art.as_citation()) for art in articles])
 
 
-def main():
+def generate_parser():
     usage = """scholar.py [options] <query string>
-A command-line interface to Google Scholar.
+    A command-line interface to Google Scholar.
 
-Examples:
+    Examples:
 
-# Retrieve one article written by Einstein on quantum theory:
-scholar.py -c 1 --author "albert einstein" --phrase "quantum theory"
+    # Retrieve one article written by Einstein on quantum theory:
+    scholar.py -c 1 --author "albert einstein" --phrase "quantum theory"
 
-# Retrieve a BibTeX entry for that quantum theory paper:
-scholar.py -c 1 -C 17749203648027613321 --citation bt
+    # Retrieve a BibTeX entry for that quantum theory paper:
+    scholar.py -c 1 -C 17749203648027613321 --citation bt
 
-# Retrieve five articles written by Einstein after 1970 where the title
-# does not contain the words "quantum" and "theory":
-scholar.py -c 5 -a "albert einstein" -t --none "quantum theory" --after 1970"""
+    # Retrieve five articles written by Einstein after 1970 where the title
+    # does not contain the words "quantum" and "theory":
+    scholar.py -c 5 -a "albert einstein" -t --none "quantum theory" --after 1970"""
 
     fmt = optparse.IndentedHelpFormatter(max_help_position=50, width=100)
     parser = optparse.OptionParser(usage=usage, formatter=fmt)
@@ -1261,21 +1261,17 @@ scholar.py -c 5 -a "albert einstein" -t --none "quantum theory" --after 1970"""
     group.add_option('-v', '--version', action='store_true', default=False,
                      help='Show version information')
     parser.add_option_group(group)
+    return parser
 
-    options, _ = parser.parse_args()
 
-    # Show help if we have neither keyword search nor author name
-    if len(sys.argv) == 1:
-        parser.print_help()
-        return 1
-
+def work(options, output_file=sys.stdout):
     if options.debug > 0:
         options.debug = min(options.debug, ScholarUtils.LOG_LEVELS['debug'])
         ScholarConf.LOG_LEVEL = options.debug
         ScholarUtils.log('info', 'using log level %d' % ScholarConf.LOG_LEVEL)
 
     if options.version:
-        print('This is scholar.py %s.' % ScholarConf.VERSION)
+        print('This is scholar.py %s.' % ScholarConf.VERSION, file=sys.stdout)
         return 0
 
     if options.cookie_file:
@@ -1287,7 +1283,7 @@ scholar.py -c 5 -a "albert einstein" -t --none "quantum theory" --after 1970"""
         if options.author or options.allw or options.some or options.none \
                 or options.phrase or options.title_only or options.pub \
                 or options.after or options.before:
-            print('Cluster ID queries do not allow additional search arguments.')
+            print('Cluster ID queries do not allow additional search arguments.', file=sys.stderr)
             return 1
 
     querier = ScholarQuerier()
@@ -1302,7 +1298,7 @@ scholar.py -c 5 -a "albert einstein" -t --none "quantum theory" --after 1970"""
     elif options.citation == 'rw':
         settings.set_citation_format(ScholarSettings.CITFORM_REFWORKS)
     elif options.citation is not None:
-        print('Invalid citation link format, must be one of "bt", "en", "rm", or "rw".')
+        print('Invalid citation link format, must be one of "bt", "en", "rm", or "rw".', file=sys.stderr)
         return 1
 
     querier.apply_settings(settings)
@@ -1346,18 +1342,30 @@ scholar.py -c 5 -a "albert einstein" -t --none "quantum theory" --after 1970"""
     querier.send_query(query)
 
     if options.csv:
-        csv(querier)
+        csv(querier, output_file=output_file)
     elif options.csv_header:
-        csv(querier, header=True)
+        csv(querier, header=True, output_file=output_file)
     elif options.citation is not None:
-        citation_export(querier)
+        citation_export(querier, output_file=output_file)
     else:
-        txt(querier, with_globals=options.txt_globals)
+        txt(querier, with_globals=options.txt_globals, output_file=output_file)
 
     if options.cookie_file:
         querier.save_cookies()
 
     return 0
+
+
+def main():
+    parser = generate_parser()
+    options, _ = parser.parse_args()
+
+    # Show help if we have neither keyword search nor author name
+    if len(sys.argv) == 1:
+        parser.print_help()
+        return 1
+
+    return work(options)
 
 
 if __name__ == "__main__":
