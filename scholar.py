@@ -702,7 +702,7 @@ class CitesScholarQuery(ScholarQuery):
         "cited by" results. It is not supported now.
     """
     SCHOLAR_CITES_URL = ScholarConf.SCHOLAR_SITE + '/scholar?' + \
-                        'cites=%(cluster_id)s' + '%(num)s' + '%(page)s'
+                        'cites=%(cluster_id)s' + '%(num)s' + '%(page)s' + '&hl=en'
 
     def __init__(self, cluster_id=None):
         ScholarQuery.__init__(self)
@@ -734,7 +734,7 @@ class ClusterScholarQuery(ScholarQuery):
     """
     SCHOLAR_CLUSTER_URL = ScholarConf.SCHOLAR_SITE + '/scholar?' \
                           + 'cluster=%(cluster)s' \
-                          + '%(num)s' + '%(page)s'
+                          + '%(num)s' + '%(page)s' + '&hl=en'
 
     def __init__(self, cluster=None):
         ScholarQuery.__init__(self)
