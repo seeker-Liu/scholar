@@ -1251,6 +1251,8 @@ def generate_parser():
                      help='Like --csv, but print header with column names')
     group.add_option('--citation', metavar='FORMAT', default=None,
                      help='Print article details in standard citation format. Argument Must be one of "bt" (BibTeX), "en" (EndNote), "rm" (RefMan), or "rw" (RefWorks).')
+    group.add_option('--raw', action='store_true',
+                     help='Return raw ScholarArticle object. No meant to be used directly in terminal.')
     parser.add_option_group(group)
 
     group = optparse.OptionGroup(parser, 'Miscellaneous')
@@ -1347,12 +1349,16 @@ def work(options, output_file=sys.stdout):
         csv(querier, header=True, output_file=output_file)
     elif options.citation is not None:
         citation_export(querier, output_file=output_file)
+    elif options.raw:
+        pass
     else:
         txt(querier, with_globals=options.txt_globals, output_file=output_file)
 
     if options.cookie_file:
         querier.save_cookies()
 
+    if options.raw:
+        return querier.articles
     return 0
 
 
@@ -1365,7 +1371,7 @@ def main():
         parser.print_help()
         return 1
 
-    return work(options)
+    return 0 if work(options) == 0 else 1
 
 
 if __name__ == "__main__":
