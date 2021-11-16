@@ -168,40 +168,14 @@ import sys
 import warnings
 import ssl
 
-try:
-    # Try importing for Python 3
-    # pylint: disable-msg=F0401
-    # pylint: disable-msg=E0611
-    from urllib.request import HTTPCookieProcessor, Request, build_opener, HTTPSHandler
-    from urllib.parse import quote, unquote
-    from http.cookiejar import MozillaCookieJar
-except ImportError:
-    # Fallback for Python 2
-    from urllib2 import Request, build_opener, HTTPCookieProcessor, HTTPSHandler
-    from urllib import quote, unquote
-    from cookielib import MozillaCookieJar
+from urllib.request import HTTPCookieProcessor, Request, build_opener, HTTPSHandler
+from urllib.parse import quote, unquote
+from http.cookiejar import MozillaCookieJar
 
-# Import BeautifulSoup -- try 4 first, fall back to older
-try:
-    from bs4 import BeautifulSoup
-    from bs4 import NavigableString, Tag
-except ImportError:
-    try:
-        from BeautifulSoup import BeautifulSoup
-    except ImportError:
-        print('We need BeautifulSoup, sorry...')
-        sys.exit(1)
+from bs4 import BeautifulSoup
+from bs4 import NavigableString, Tag
 
-# Support unicode in both Python 2 and 3. In Python 3, unicode is str.
-if sys.version_info[0] == 3:
-    unicode = str  # pylint: disable-msg=W0622
-    encode = lambda s: unicode(s)  # pylint: disable-msg=C0103
-else:
-    def encode(s):
-        if isinstance(s, basestring):
-            return s.encode('utf-8')  # pylint: disable-msg=C0103
-        else:
-            return str(s)
+encode = lambda s: str(s)  # pylint: disable-msg=C0103
 
 
 class Error(Exception):
@@ -349,7 +323,7 @@ class ScholarArticle(object):
         res = []
         if header:
             res.append(sep.join(keys))
-        res.append(sep.join([unicode(self.attrs[key][0]) for key in keys]))
+        res.append(sep.join([str(self.attrs[key][0]) for key in keys]))
         return '\n'.join(res)
 
     def as_citation(self):
