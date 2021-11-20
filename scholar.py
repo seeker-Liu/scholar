@@ -342,10 +342,9 @@ class ScholarArticleParser(object):
     adapting to tweaks made by Google over time follow below.
     """
 
-    def __init__(self, site=None):
+    def __init__(self):
         self.soup = None
         self.article = None
-        self.site = site or ScholarConf.SCHOLAR_SITE
         self.year_re = re.compile(r'\b(?:20|19)\d{2}\b')
 
     def handle_article(self, art):
@@ -502,7 +501,7 @@ class ScholarArticleParser(object):
             return path
         if not path.startswith('/'):
             path = '/' + path
-        return self.site + path
+        return ScholarConf.SCHOLAR_SITE + path
 
     def _strip_url_arg(self, arg, url):
         """Helper, removes a URL-encoded argument, if present."""
@@ -701,11 +700,11 @@ class CitesScholarQuery(ScholarQuery):
     # TODO: This query, unlike ClusterScholarQuery, can also have other parameters to further filter in all
         "cited by" results. It is not supported now.
     """
-    SCHOLAR_CITES_URL = ScholarConf.SCHOLAR_SITE + '/scholar?' + \
-                        'cites=%(cluster_id)s' + '%(num)s' + '%(page)s' + '&hl=en'
 
     def __init__(self, cluster_id=None):
         ScholarQuery.__init__(self)
+        self.url_base = ScholarConf.SCHOLAR_SITE + '/scholar?' + \
+            'cites=%(cluster_id)s' + '%(num)s' + '%(page)s' + '&hl=en'
         self.cluster_id = None
         self.set_cluster(cluster_id)
 
@@ -724,7 +723,7 @@ class CitesScholarQuery(ScholarQuery):
         # The following URL arguments must not be quoted, or the
         # server will not recognize them:
 
-        return self.SCHOLAR_CITES_URL % urlargs
+        return self.url_base % urlargs
 
 
 class ClusterScholarQuery(ScholarQuery):
@@ -732,15 +731,14 @@ class ClusterScholarQuery(ScholarQuery):
     This version just pulls up an article cluster whose ID we already
     know about.
     """
-    SCHOLAR_CLUSTER_URL = ScholarConf.SCHOLAR_SITE + '/scholar?' \
-                          + 'cluster=%(cluster)s' \
-                          + '%(num)s' + '%(page)s' + '&hl=en'
 
     def __init__(self, cluster=None):
         ScholarQuery.__init__(self)
         self._add_attribute_type('num_results', 'Results', 0)
         self.cluster = None
         self.set_cluster(cluster)
+        self.url_base = ScholarConf.SCHOLAR_SITE + '/scholar?' \
+            + 'cluster=%(cluster)s' + '%(num)s' + '%(page)s' + '&hl=en'
 
     def set_cluster(self, cluster):
         """
@@ -764,7 +762,7 @@ class ClusterScholarQuery(ScholarQuery):
                           if self.num_results is not None else '')
         urlargs['page'] = ('&start=%d' % ((self.page_num - 1) * 10) if self.page_num is not None else '')
 
-        return self.SCHOLAR_CLUSTER_URL % urlargs
+        return self.url_base % urlargs
 
 
 class SearchScholarQuery(ScholarQuery):
@@ -772,21 +770,6 @@ class SearchScholarQuery(ScholarQuery):
     This version represents the search query parameters the user can
     configure on the Scholar website, in the advanced search options.
     """
-    SCHOLAR_QUERY_URL = ScholarConf.SCHOLAR_SITE + '/scholar?' \
-                        + 'as_q=%(words)s' \
-                        + '&as_epq=%(phrase)s' \
-                        + '&as_oq=%(words_some)s' \
-                        + '&as_eq=%(words_none)s' \
-                        + '&as_occt=%(scope)s' \
-                        + '&as_sauthors=%(authors)s' \
-                        + '&as_publication=%(pub)s' \
-                        + '&as_ylo=%(ylo)s' \
-                        + '&as_yhi=%(yhi)s' \
-                        + '&as_vis=%(citations)s' \
-                        + '&btnG=&hl=en' \
-                        + '%(num)s' \
-                        + '&as_sdt=%(patents)s%%2C5'
-
     def __init__(self):
         ScholarQuery.__init__(self)
         self._add_attribute_type('num_results', 'Results', 0)
@@ -800,6 +783,22 @@ class SearchScholarQuery(ScholarQuery):
         self.timeframe = [None, None]
         self.include_patents = True
         self.include_citations = True
+        self.url_base = \
+            ScholarConf.SCHOLAR_SITE + '/scholar?' \
+            + 'as_q=%(words)s' \
+            + '&as_epq=%(phrase)s' \
+            + '&as_oq=%(words_some)s' \
+            + '&as_eq=%(words_none)s' \
+            + '&as_occt=%(scope)s' \
+            + '&as_sauthors=%(authors)s' \
+            + '&as_publication=%(pub)s' \
+            + '&as_ylo=%(ylo)s' \
+            + '&as_yhi=%(yhi)s' \
+            + '&as_vis=%(citations)s' \
+            + '&btnG=&hl=en' \
+            + '%(num)s' \
+            + '&as_sdt=%(patents)s%%2C5'
+
 
     def set_words(self, words):
         """Sets words that *all* must be found in the result."""
@@ -889,7 +888,7 @@ class SearchScholarQuery(ScholarQuery):
         urlargs['num'] = ('&num=%d' % self.num_results
                           if self.num_results is not None else '')
 
-        return self.SCHOLAR_QUERY_URL % urlargs
+        return self.url_base % urlargs
 
 
 class ScholarSettings(object):
