@@ -1056,6 +1056,9 @@ class ScholarQuerier(object):
         if html is None:
             return
 
+        if str(html).find("Please show you&#39;re not a robot") != -1:
+            raise Error("Anti-scrapped by Google!")
+
         self.parse(html)
 
     def get_citation_data(self, article):
